@@ -1,0 +1,88 @@
+version: "3"
+
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg14
+    restart: always
+    container_name: setk_timescaled
+    environment:
+      POSTGRES_PASSWORD: password
+      TZ: Europe/Berlin
+    volumes:
+      - setk_timescale_data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+
+  grafana:
+    image: grafana/grafana-oss
+    hostname: grafana
+    restart: always
+    container_name: setk_grafana
+    depends_on:
+      - timescaledb
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_FEATURE_TOGGLES_PUBLICDASHBOARDS=true
+    ports:
+      - 3000:3000
+    volumes:
+      - setk_grafana_data:/var/lib/grafana
+#    labels:
+#      - "traefik.enable=true"
+#      - "traefik.http.routers.grafana.rule=Host(`grafana.gateway.tonick.net`)"
+#      - "traefik.docker.network=web"
+#      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+
+  metabase:
+    image: metabase/metabase:v0.44.2
+    restart: always
+    container_name: setk_metabase
+    depends_on:
+      - timescaledb
+    ports:
+      - 3001:3000
+    volumes:
+      - setk_metabase_data:/metabase-data
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: metabase
+      MB_DB_PORT: 5432
+      MB_DB_USER: postgres
+      MB_DB_PASS: password
+      MB_DB_HOST: timescaledb
+    links:
+      - timescaledb
+#    labels:
+#      - "traefik.enable=true"
+#      - "traefik.http.routers.metabase.rule=Host(`metabase.gateway.tonick.net`)"
+#      - "traefik.docker.network=web"
+#      - "traefik.http.services.metabase.loadbalancer.server.port=3000"
+
+
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: always
+    container_name: setk_pgadmin
+    depends_on:
+      - timescaledb
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: root
+    ports:
+      - "5050:80"
+
+  nodered:
+    restart: always
+    hostname: nodered
+    image: nodered/node-red:2.2.3-12
+    container_name: setk_nodered
+    ports:
+      - 1880:1880
+    volumes:
+      - setk_nodered_data:/data
+
+volumes:
+  setk_grafana_data:
+  setk_timescale_data:
+  setk_nodered_data:
+  setk_metabase_data:
